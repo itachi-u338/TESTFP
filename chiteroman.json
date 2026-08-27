@@ -1,9 +1,9 @@
 {
   "MANUFACTURER": "Google",
-  "MODEL": "Pixel Tablet",
-  "FINGERPRINT": "google/tangorpro_beta/tangorpro:17/CP41.260731.005.A2/16056594:user/release-keys",
-  "PRODUCT": "tangorpro_beta",
-  "DEVICE": "tangorpro",
+  "MODEL": "Pixel 7a",
+  "FINGERPRINT": "google/lynx_beta/lynx:17/CP41.260731.005.A2/16056594:user/release-keys",
+  "PRODUCT": "lynx_beta",
+  "DEVICE": "lynx",
   "SECURITY_PATCH": "2026-07-05",
   "DEVICE_INITIAL_SDK_INT": "32"
 }
