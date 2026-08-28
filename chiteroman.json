@@ -1,9 +1,9 @@
 {
   "MANUFACTURER": "Google",
-  "MODEL": "Pixel 9 Pro",
-  "FINGERPRINT": "google/caiman_beta/caiman:17/CP41.260731.005.B1/16056512:user/release-keys",
-  "PRODUCT": "caiman_beta",
-  "DEVICE": "caiman",
+  "MODEL": "Pixel 9",
+  "FINGERPRINT": "google/tokay_beta/tokay:17/CP41.260731.005.B1/16056512:user/release-keys",
+  "PRODUCT": "tokay_beta",
+  "DEVICE": "tokay",
   "SECURITY_PATCH": "2026-08-05",
   "DEVICE_INITIAL_SDK_INT": "32"
 }
