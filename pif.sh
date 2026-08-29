@@ -17,7 +17,7 @@ echo
 # Requirements
 # ------------------------------------------------------------
 
-for cmd in curl python3 grep sed awk sort; do
+for cmd in curl python3 grep sed awk sort unzip; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
         echo "Error: required command '$cmd' is not installed."
         exit 1
@@ -25,7 +25,7 @@ for cmd in curl python3 grep sed awk sort; do
 done
 
 # ------------------------------------------------------------
-# Download Google's small HTML page
+# Download Google's OTA page
 # ------------------------------------------------------------
 
 echo "Fetching Google OTA page..."
@@ -46,37 +46,29 @@ fi
 # ------------------------------------------------------------
 
 RELEASE_DATE="$(
-    grep -m1 -A1 'Release date' "$HTML_FILE" |
+    grep -m1 -A2 'Release date' "$HTML_FILE" |
     grep -oE '[A-Z][a-z]+ [0-9]{1,2}, [0-9]{4}' |
     head -n1 || true
 )"
 
-BUILD_LIST="$(
-    grep -A5 'Release date' "$HTML_FILE" |
-    grep -oE 'CP[0-9A-Z.]+'
-    | sort -u
-    | tr '\n' ' '
-)"
-
-SECURITY_PATCH="$(
-    grep -m1 -A8 'Security patch level' "$HTML_FILE" |
+SECURITY_PATCH_PAGE="$(
+    grep -m1 -A10 'Security patch level' "$HTML_FILE" |
     grep -oE '202[0-9]-[0-9]{2}-[0-9]{2}' |
     head -n1 || true
 )"
 
 echo "Release date: ${RELEASE_DATE:-Unknown}"
-echo "Builds: ${BUILD_LIST:-Unknown}"
-echo "Security patch: ${SECURITY_PATCH:-Unknown}"
+echo "Page security patch: ${SECURITY_PATCH_PAGE:-Unknown}"
 echo
 
 # ------------------------------------------------------------
-# Extract OTA ZIP filenames from Google's page
+# Extract COMPLETE OTA ZIP URLs
 # ------------------------------------------------------------
 
-echo "Extracting OTA entries..."
+echo "Extracting OTA URLs..."
 
 mapfile -t OTA_FILES < <(
-    grep -oE '[a-z0-9]+_beta-ota-cp[0-9a-z.]+-[0-9a-f]+\.zip' "$HTML_FILE" |
+    grep -oE 'https://dl\.google\.com/[^"]+_beta-ota-[^"]+\.zip' "$HTML_FILE" |
     sort -u
 )
 
@@ -85,21 +77,58 @@ if [ "${#OTA_FILES[@]}" -eq 0 ]; then
     exit 1
 fi
 
-echo "Found ${#OTA_FILES[@]} OTA entries."
+echo "Found ${#OTA_FILES[@]} OTA files."
 echo
 
 # ------------------------------------------------------------
-# Random device
+# Random device selection
 # ------------------------------------------------------------
 
-RANDOM_INDEX=$((RANDOM % ${#OTA_FILES[@]}))
+if [ "${1:-}" = "-m" ] && [ -n "${2:-}" ]; then
 
-OTA_FILENAME="${OTA_FILES[$RANDOM_INDEX]}"
+    TARGET_DEVICE="$2"
+
+    echo "Requested device: $TARGET_DEVICE"
+
+    TARGET_PRODUCT="${TARGET_DEVICE}_beta"
+
+    OTA=""
+
+    for candidate in "${OTA_FILES[@]}"; do
+        filename="$(basename "$candidate")"
+
+        if [[ "$filename" == "${TARGET_PRODUCT}-ota-"* ]]; then
+            OTA="$candidate"
+            break
+        fi
+    done
+
+    if [ -z "$OTA" ]; then
+        echo "Error: No QPR2 OTA found for $TARGET_DEVICE"
+        exit 1
+    fi
+
+else
+
+    echo "Selecting random Pixel device from Android 17 QPR2 list..."
+
+    RANDOM_INDEX=$((RANDOM % ${#OTA_FILES[@]}))
+
+    OTA="${OTA_FILES[$RANDOM_INDEX]}"
+
+fi
+
+# ------------------------------------------------------------
+# Parse selected OTA filename
+# ------------------------------------------------------------
+
+OTA_FILENAME="$(basename "$OTA")"
 
 PRODUCT="${OTA_FILENAME%%-ota-*}"
+
 DEVICE="${PRODUCT%_beta}"
 
-OTA_URL="https://dl.google.com/developers/android/cinnamonbun/images/ota/${OTA_FILENAME}"
+OTA_URL="$OTA"
 
 echo "Selected OTA:"
 echo "$OTA_FILENAME"
@@ -109,34 +138,82 @@ echo "Device:"
 echo "$DEVICE"
 echo
 
+echo "Product:"
+echo "$PRODUCT"
+echo
+
 echo "OTA URL:"
 echo "$OTA_URL"
 echo
 
 # ------------------------------------------------------------
-# Device name mapping
+# Device model mapping
 # ------------------------------------------------------------
 
 case "$DEVICE" in
-    bluejay)   MODEL="Pixel 6a" ;;
-    panther)   MODEL="Pixel 7" ;;
-    cheetah)   MODEL="Pixel 7 Pro" ;;
-    lynx)      MODEL="Pixel 7a" ;;
-    felix)     MODEL="Pixel Fold" ;;
-    tangorpro) MODEL="Pixel Tablet" ;;
-    shiba)     MODEL="Pixel 8" ;;
-    husky)     MODEL="Pixel 8 Pro" ;;
-    akita)     MODEL="Pixel 8a" ;;
-    tokay)     MODEL="Pixel 9" ;;
-    caiman)    MODEL="Pixel 9 Pro" ;;
-    komodo)    MODEL="Pixel 9 Pro XL" ;;
-    comet)     MODEL="Pixel 9 Pro Fold" ;;
-    tegu)      MODEL="Pixel 9a" ;;
-    frankel)   MODEL="Pixel 10" ;;
-    blazer)    MODEL="Pixel 10 Pro" ;;
-    mustang)   MODEL="Pixel 10 Pro XL" ;;
-    rango)     MODEL="Pixel 10 Pro Fold" ;;
-    stallion)  MODEL="Pixel 10a" ;;
+    bluejay)
+        MODEL="Pixel 6a"
+        ;;
+    oriole)
+        MODEL="Pixel 6"
+        ;;
+    raven)
+        MODEL="Pixel 6 Pro"
+        ;;
+    panther)
+        MODEL="Pixel 7"
+        ;;
+    cheetah)
+        MODEL="Pixel 7 Pro"
+        ;;
+    lynx)
+        MODEL="Pixel 7a"
+        ;;
+    felix)
+        MODEL="Pixel Fold"
+        ;;
+    tangorpro)
+        MODEL="Pixel Tablet"
+        ;;
+    shiba)
+        MODEL="Pixel 8"
+        ;;
+    husky)
+        MODEL="Pixel 8 Pro"
+        ;;
+    akita)
+        MODEL="Pixel 8a"
+        ;;
+    tokay)
+        MODEL="Pixel 9"
+        ;;
+    caiman)
+        MODEL="Pixel 9 Pro"
+        ;;
+    komodo)
+        MODEL="Pixel 9 Pro XL"
+        ;;
+    comet)
+        MODEL="Pixel 9 Pro Fold"
+        ;;
+    tegu)
+        MODEL="Pixel 9a"
+        ;;
+    frankel)
+        MODEL="Pixel 10"
+        ;;
+    blazr)
+        MODEL="Pixel 10 Pro"
+        ;;
+    mustang)
+        MODEL="Pixel 10 Pro XL"
+        ;;
+    rango)
+        MODEL="Pixel 10 Pro Fold"
+        ;;
+    stallion)
+        MODEL="Pixel 10a"
+        ;;
     *)
         MODEL="$DEVICE"
         ;;
@@ -147,19 +224,47 @@ echo "$MODEL"
 echo
 
 # ------------------------------------------------------------
-# Obtain remote ZIP size
+# Check OTA server
 # ------------------------------------------------------------
 
-echo "Checking remote OTA..."
+echo "Checking OTA server..."
+
+HTTP_STATUS="$(
+    curl -L \
+        -s \
+        -o /dev/null \
+        -w '%{http_code}' \
+        --retry 3 \
+        "$OTA_URL" || true
+)"
+
+echo "OTA HTTP status: $HTTP_STATUS"
+
+if [ "$HTTP_STATUS" != "200" ]; then
+    echo
+    echo "Error: Google OTA returned HTTP $HTTP_STATUS"
+    echo "URL: $OTA_URL"
+    echo
+    echo "This usually means the OTA URL on Google's page is no longer"
+    echo "available or Google changed the download endpoint."
+    exit 1
+fi
+
+# ------------------------------------------------------------
+# Get OTA file size
+# ------------------------------------------------------------
+
+echo
+echo "Getting OTA file size..."
 
 ZIP_SIZE="$(
     curl -fsSLI \
         --retry 3 \
         "$OTA_URL" |
-    awk 'BEGIN{IGNORECASE=1}
+    awk 'BEGIN { IGNORECASE=1 }
          /^content-length:/ {
-             gsub("\r","",$2);
-             print $2;
+             gsub("\r", "", $2)
+             print $2
              exit
          }'
 )"
@@ -169,169 +274,203 @@ if [ -z "$ZIP_SIZE" ]; then
     exit 1
 fi
 
-echo "Remote ZIP size: $ZIP_SIZE bytes"
+echo "OTA size: $ZIP_SIZE bytes"
 
 # ------------------------------------------------------------
-# Extract META-INF/com/android/metadata using HTTP Range
-#
-# This DOES NOT download the entire OTA.
-#
-# ZIP layout:
-#
-#   [local file entries]
-#   [central directory]
-#   [EOCD]
-#
-# We first fetch the final portion of the ZIP, locate the EOCD,
-# obtain the central directory location, then fetch only that
-# directory and the metadata entry.
+# Extract ZIP metadata WITHOUT downloading whole OTA
 # ------------------------------------------------------------
 
 echo
-echo "Locating ZIP central directory..."
+echo "Locating OTA metadata using HTTP Range requests..."
 
 python3 - "$OTA_URL" "$ZIP_SIZE" "$META_FILE" <<'PY'
 import sys
 import struct
 import subprocess
-import tempfile
-import os
 
 url = sys.argv[1]
 size = int(sys.argv[2])
 output = sys.argv[3]
 
-# Last 128 KiB is enough for the normal ZIP EOCD.
-TAIL = min(131072, size)
-
-start = size - TAIL
-end = size - 1
-
-def curl_range(a, b):
-    cmd = [
+def curl_range(start, end):
+    command = [
         "curl",
         "-fsSL",
         "--retry", "3",
         "--retry-delay", "1",
-        "-r", f"{a}-{b}",
+        "-r",
+        f"{start}-{end}",
         url
     ]
-    return subprocess.check_output(cmd)
 
-tail = curl_range(start, end)
+    return subprocess.check_output(command)
 
-# EOCD signature = PK\x05\x06
-sig = b"PK\x05\x06"
+# ------------------------------------------------------------
+# Fetch final part of ZIP
+# ------------------------------------------------------------
 
-pos = tail.rfind(sig)
+TAIL_SIZE = min(131072, size)
 
-if pos < 0:
-    raise SystemExit("Error: ZIP end-of-central-directory record not found.")
+tail_start = size - TAIL_SIZE
+tail_end = size - 1
 
-if pos + 22 > len(tail):
-    raise SystemExit("Error: Incomplete ZIP EOCD record.")
+print(
+    f"Downloading final ZIP section: "
+    f"{tail_start}-{tail_end}"
+)
 
-eocd = tail[pos:pos + 22]
+tail = curl_range(tail_start, tail_end)
+
+# EOCD signature
+EOCD = b"PK\x05\x06"
+
+position = tail.rfind(EOCD)
+
+if position < 0:
+    raise SystemExit(
+        "Error: ZIP end-of-central-directory record not found."
+    )
+
+if position + 22 > len(tail):
+    raise SystemExit(
+        "Error: ZIP EOCD record is incomplete."
+    )
+
+eocd = tail[position:position + 22]
 
 (
     signature,
-    disk,
-    cd_disk,
+    disk_number,
+    central_directory_disk,
     disk_entries,
     total_entries,
-    cd_size,
-    cd_offset,
+    central_directory_size,
+    central_directory_offset,
     comment_length
-) = struct.unpack("<4sHHHHIIH", eocd)
+) = struct.unpack(
+    "<4sHHHHIIH",
+    eocd
+)
 
-if signature != sig:
-    raise SystemExit("Error: Invalid ZIP EOCD signature.")
+if signature != EOCD:
+    raise SystemExit(
+        "Error: Invalid ZIP EOCD signature."
+    )
 
 print(f"ZIP entries: {total_entries}")
-print(f"Central directory size: {cd_size}")
-print(f"Central directory offset: {cd_offset}")
+print(
+    f"Central directory offset: "
+    f"{central_directory_offset}"
+)
+print(
+    f"Central directory size: "
+    f"{central_directory_size}"
+)
 
-# ----------------------------------------------------------
+# ------------------------------------------------------------
 # Fetch central directory
-# ----------------------------------------------------------
+# ------------------------------------------------------------
 
-cd = curl_range(cd_offset, cd_offset + cd_size - 1)
+cd_start = central_directory_offset
+cd_end = cd_start + central_directory_size - 1
 
-target = b"META-INF/com/android/metadata"
+print(
+    f"Downloading central directory: "
+    f"{cd_start}-{cd_end}"
+)
 
-found = None
-p = 0
+central_directory = curl_range(
+    cd_start,
+    cd_end
+)
+
+TARGET = b"META-INF/com/android/metadata"
+
+position = 0
+metadata_entry = None
 
 for _ in range(total_entries):
-    if p + 46 > len(cd):
+
+    if position + 46 > len(central_directory):
         break
 
-    if cd[p:p+4] != b"PK\x01\x02":
+    if central_directory[position:position + 4] != b"PK\x01\x02":
         break
 
-    header = cd[p:p+46]
+    header = central_directory[position:position + 46]
 
-    fields = struct.unpack("<4s6H3I5H2I", header)
+    fields = struct.unpack(
+        "<4s6H3I5H2I",
+        header
+    )
 
-    compression = fields[4]
+    compression_method = fields[4]
     compressed_size = fields[8]
     uncompressed_size = fields[9]
     filename_length = fields[10]
     extra_length = fields[11]
     comment_length = fields[12]
-    local_offset = fields[16]
+    local_header_offset = fields[16]
 
-    name_start = p + 46
-    name_end = name_start + filename_length
+    filename_start = position + 46
+    filename_end = filename_start + filename_length
 
-    name = cd[name_start:name_end]
+    filename = central_directory[
+        filename_start:filename_end
+    ]
 
-    if name == target:
-        found = (
-            compression,
-            compressed_size,
-            uncompressed_size,
-            filename_length,
-            extra_length,
-            local_offset
-        )
+    if filename == TARGET:
+
+        metadata_entry = {
+            "compression": compression_method,
+            "compressed_size": compressed_size,
+            "uncompressed_size": uncompressed_size,
+            "local_offset": local_header_offset,
+            "filename_length": filename_length,
+            "extra_length": extra_length
+        }
+
         break
 
-    p = name_end + extra_length + comment_length
-
-if found is None:
-    raise SystemExit(
-        "Error: META-INF/com/android/metadata "
-        "was not found in the ZIP central directory."
+    position = (
+        filename_end
+        + extra_length
+        + comment_length
     )
 
-(
-    compression,
-    compressed_size,
-    uncompressed_size,
-    filename_length,
-    extra_length,
-    local_offset
-) = found
+if metadata_entry is None:
+    raise SystemExit(
+        "Error: META-INF/com/android/metadata "
+        "was not found."
+    )
 
-print(f"Metadata compression method: {compression}")
-print(f"Metadata compressed size: {compressed_size}")
-print(f"Metadata uncompressed size: {uncompressed_size}")
-print(f"Metadata local offset: {local_offset}")
+print("Found OTA metadata entry.")
 
-# ----------------------------------------------------------
-# Fetch local file header
-# ----------------------------------------------------------
+compression = metadata_entry["compression"]
+compressed_size = metadata_entry["compressed_size"]
+local_offset = metadata_entry["local_offset"]
 
-local_header = curl_range(local_offset, local_offset + 29)
+# ------------------------------------------------------------
+# Fetch local ZIP header
+# ------------------------------------------------------------
+
+local_header = curl_range(
+    local_offset,
+    local_offset + 29
+)
 
 if local_header[:4] != b"PK\x03\x04":
-    raise SystemExit("Error: Invalid ZIP local-file header.")
+    raise SystemExit(
+        "Error: Invalid ZIP local header."
+    )
 
-lh = struct.unpack("<4s5H3I2H", local_header[:30])
+local_fields = struct.unpack(
+    "<4s5H3I2H",
+    local_header[:30]
+)
 
-local_filename_length = lh[9]
-local_extra_length = lh[10]
+local_filename_length = local_fields[9]
+local_extra_length = local_fields[10]
 
 data_offset = (
     local_offset
@@ -341,47 +480,62 @@ data_offset = (
 )
 
 print(f"Metadata data offset: {data_offset}")
+print(f"Metadata compressed size: {compressed_size}")
 
-# ----------------------------------------------------------
-# Fetch ONLY metadata bytes
-# ----------------------------------------------------------
+# ------------------------------------------------------------
+# Fetch ONLY the metadata entry
+# ------------------------------------------------------------
 
-data = curl_range(
+metadata_data = curl_range(
     data_offset,
     data_offset + compressed_size - 1
 )
 
-if len(data) != compressed_size:
+if len(metadata_data) != compressed_size:
     raise SystemExit(
-        f"Error: expected {compressed_size} metadata bytes, "
-        f"received {len(data)}."
+        f"Error: Expected {compressed_size} bytes, "
+        f"received {len(metadata_data)}."
     )
 
-# Metadata is normally stored without compression.
+# ------------------------------------------------------------
+# Decompress if required
+# ------------------------------------------------------------
+
 if compression == 0:
-    decoded = data
+
+    decoded = metadata_data
 
 elif compression == 8:
-    import zlib
-    decoded = zlib.decompress(data, -15)
 
-else:
-    raise SystemExit(
-        f"Error: unsupported ZIP compression method {compression}"
+    import zlib
+
+    decoded = zlib.decompress(
+        metadata_data,
+        -15
     )
 
-with open(output, "wb") as f:
-    f.write(decoded)
+else:
 
-print(f"Metadata extracted: {len(decoded)} bytes")
+    raise SystemExit(
+        f"Error: Unsupported ZIP compression method "
+        f"{compression}"
+    )
+
+with open(output, "wb") as file:
+    file.write(decoded)
+
+print(
+    f"Metadata extracted successfully: "
+    f"{len(decoded)} bytes"
+)
 PY
 
 # ------------------------------------------------------------
-# Display metadata
+# Verify metadata
 # ------------------------------------------------------------
 
 if [ ! -s "$META_FILE" ]; then
-    echo "Error: metadata extraction produced an empty file."
+    echo "Error: OTA metadata is empty."
     exit 1
 fi
 
@@ -396,7 +550,7 @@ echo
 echo "=============================================="
 
 # ------------------------------------------------------------
-# Extract useful fields
+# Extract metadata values
 # ------------------------------------------------------------
 
 POST_BUILD="$(
@@ -405,48 +559,59 @@ POST_BUILD="$(
     tr -d '\r'
 )"
 
-SECURITY_PATCH_METADATA="$(
+SECURITY_PATCH="$(
     sed -n 's/^security-patch-level=//p' "$META_FILE" |
     head -n1 |
     tr -d '\r'
 )"
 
-POST_SDK="$(
+POST_SDK_LEVEL="$(
     sed -n 's/^post-sdk-level=//p' "$META_FILE" |
     head -n1 |
     tr -d '\r'
 )"
 
 echo
-echo "Device:              $MODEL"
-echo "Codename:            $DEVICE"
-echo "OTA filename:        $OTA_FILENAME"
-echo "Build fingerprint:   ${POST_BUILD:-Not present}"
-echo "Security patch:      ${SECURITY_PATCH_METADATA:-$SECURITY_PATCH}"
-echo "Post SDK level:      ${POST_SDK:-Unknown}"
+echo "=============================================="
+echo " RESULT"
+echo "=============================================="
+
+echo "Model:            $MODEL"
+echo "Device:           $DEVICE"
+echo "Product:          $PRODUCT"
+echo "OTA:              $OTA_FILENAME"
+echo "Fingerprint:      ${POST_BUILD:-Not present}"
+echo "Security patch:   ${SECURITY_PATCH:-${SECURITY_PATCH_PAGE:-Unknown}}"
+echo "Post SDK level:   ${POST_SDK_LEVEL:-Unknown}"
 
 # ------------------------------------------------------------
-# Optional GitHub Actions outputs
+# GitHub Actions outputs
 # ------------------------------------------------------------
 
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
+
     {
         echo "device=$DEVICE"
         echo "model=$MODEL"
+        echo "product=$PRODUCT"
         echo "ota_filename=$OTA_FILENAME"
         echo "ota_url=$OTA_URL"
         echo "fingerprint=$POST_BUILD"
-        echo "security_patch=${SECURITY_PATCH_METADATA:-$SECURITY_PATCH}"
-        echo "post_sdk_level=$POST_SDK"
+        echo "security_patch=${SECURITY_PATCH:-${SECURITY_PATCH_PAGE:-}}"
+        echo "post_sdk_level=$POST_SDK_LEVEL"
     } >> "$GITHUB_OUTPUT"
+
 fi
 
 # ------------------------------------------------------------
 # Cleanup
 # ------------------------------------------------------------
 
-rm -f "$HTML_FILE" "$META_FILE"
+rm -f "$HTML_FILE"
+rm -f "$META_FILE"
 
 echo
-echo "Success."
+echo "=============================================="
+echo " SUCCESS"
+echo "=============================================="
 echo "The complete OTA ZIP was NOT downloaded."
