@@ -87,29 +87,51 @@ echo "$OTA"
 echo "Testing OTA download headers..."
 
 curl -L -I \
-  --no-check-certificate \
+  -k \
   "$OTA" || true
 
 echo "Testing Range request..."
 
+rm -f PIXEL_ZIP_METADATA RANGE_HEADERS
+
 curl -L \
-  --no-check-certificate \
+  -k \
   -r 0-32768 \
   -o PIXEL_ZIP_METADATA \
   -D RANGE_HEADERS \
   "$OTA" || true
 
 echo "HTTP headers:"
-cat RANGE_HEADERS
+
+if [ -f RANGE_HEADERS ]; then
+  cat RANGE_HEADERS
+else
+  echo "No HTTP headers file was created."
+fi
 
 echo "Downloaded bytes:"
-wc -c PIXEL_ZIP_METADATA
+
+if [ -f PIXEL_ZIP_METADATA ]; then
+  wc -c PIXEL_ZIP_METADATA
+else
+  echo "PIXEL_ZIP_METADATA was not created."
+fi
 
 echo "First bytes:"
-xxd -l 32 PIXEL_ZIP_METADATA || true
+
+if [ -f PIXEL_ZIP_METADATA ]; then
+  xxd -l 32 PIXEL_ZIP_METADATA || true
+else
+  echo "No metadata file to inspect."
+fi
 
 echo "Searching metadata:"
-grep -aE 'post-build=|security-patch-level=' PIXEL_ZIP_METADATA || true
+
+if [ -f PIXEL_ZIP_METADATA ]; then
+  grep -aE 'post-build=|security-patch-level=' PIXEL_ZIP_METADATA || true
+else
+  echo "No file to search."
+fi
 
 FINGERPRINT="$(grep -am1 'post-build=' PIXEL_ZIP_METADATA | cut -d= -f2 | tr -d '\r')"
 SECURITY_PATCH="$(grep -am1 'security-patch-level=' PIXEL_ZIP_METADATA | cut -d= -f2 | tr -d '\r')"
