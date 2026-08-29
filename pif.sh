@@ -1,324 +1,237 @@
 #!/bin/bash
-set -euo pipefail
+set -Eeuo pipefail
 
-echo "Fetching Android 17 QPR2 Beta OTA metadata directly..."
+# Print the exact command that fails
+trap 'echo "ERROR: command failed at line $LINENO: $BASH_COMMAND"; exit 1' ERR
+
+echo "============================================================"
+echo " Android 17 QPR2 Beta OTA Metadata"
+echo "============================================================"
 
 ENDPOINT="https://developer.android.com/about/versions/17/qpr2/download-ota"
 HTML_FILE="PIXEL_OTA_HTML"
 
-echo "Targeting Endpoint: $ENDPOINT"
+echo
+echo "[1/7] Downloading Google OTA page..."
+echo "URL: $ENDPOINT"
 
-# ------------------------------------------------------------
-# Download Google OTA page
-# ------------------------------------------------------------
-wget -q \
-  --no-check-certificate \
-  -O "$HTML_FILE" \
+curl -L --fail --silent --show-error \
+  -o "$HTML_FILE" \
   "$ENDPOINT"
 
 if [ ! -s "$HTML_FILE" ]; then
-  echo "Error: Unable to download OTA page!"
-  exit 1
-fi
-
-# ------------------------------------------------------------
-# Release date
-# ------------------------------------------------------------
-BETA_REL_DATE="$(
-  grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' "$HTML_FILE" |
-  head -n1 || true
-)"
-
-if [ -z "$BETA_REL_DATE" ]; then
-  BETA_REL_DATE="$(date '+%Y-%m-%d')"
-fi
-
-# Estimate expiry = 6 weeks after release
-BETA_EXP_DATE="$(
-  date -d "$BETA_REL_DATE + 42 days" '+%Y-%m-%d' 2>/dev/null ||
-  echo "Unknown"
-)"
-
-echo "Beta Released: $BETA_REL_DATE"
-echo "Estimated Expiry: $BETA_EXP_DATE"
-
-# ------------------------------------------------------------
-# Extract OTA ZIP URLs
-#
-# Google currently publishes OTA files under:
-# https://dl.google.com/dl/android/aosp/<OTA_FILE>.zip
-# ------------------------------------------------------------
-OTA_LIST="$(
-  grep -oE 'https://dl\.google\.com/dl/android/aosp/[A-Za-z0-9._-]+\.zip' "$HTML_FILE" |
-  sort -u
-)"
-
-# Fallback for relative OTA links
-if [ -z "$OTA_LIST" ]; then
-  OTA_LIST="$(
-    grep -oE 'href="[^"]*ota/[A-Za-z0-9._-]+\.zip"' "$HTML_FILE" |
-    sed -E 's/^href="([^"]*)".*/\1/' |
-    sed 's#^#https://developer.android.com#' |
-    sort -u
-  )"
-fi
-
-if [ -z "$OTA_LIST" ]; then
-  echo "Error: No Pixel Beta OTA ZIP links found!"
-  exit 1
-fi
-
-echo
-echo "Found OTA files:"
-echo "$OTA_LIST"
-echo
-
-# ------------------------------------------------------------
-# Target device override:
-#
-# ./script.sh -m tokay
-# ------------------------------------------------------------
-TARGET_DEVICE=""
-
-if [ "${1:-}" = "-m" ] && [ -n "${2:-}" ]; then
-  TARGET_DEVICE="$2"
-fi
-
-OTA=""
-PRODUCT=""
-DEVICE=""
-MODEL=""
-
-# ------------------------------------------------------------
-# Select requested device
-# ------------------------------------------------------------
-if [ -n "$TARGET_DEVICE" ]; then
-
-  DEVICE="$TARGET_DEVICE"
-  PRODUCT="${TARGET_DEVICE}_beta"
-
-  OTA="$(
-    echo "$OTA_LIST" |
-    grep -iE "/${TARGET_DEVICE}_beta-.*\.zip$" |
-    head -n1 || true
-  )"
-
-  if [ -z "$OTA" ]; then
-    echo "Error: No OTA found for device: $TARGET_DEVICE"
-    echo
-    echo "Available devices:"
-    echo "$OTA_LIST" |
-      sed -E 's#.*/([^/]+)_beta-.*#\1#' |
-      sort -u
+    echo "ERROR: OTA page is empty or was not downloaded."
     exit 1
-  fi
+fi
+
+echo "OK: OTA page downloaded ($(wc -c < "$HTML_FILE") bytes)"
 
 # ------------------------------------------------------------
-# If running on an Android device, use getprop
+# Show whether tokay_beta is actually present
 # ------------------------------------------------------------
-elif command -v getprop >/dev/null 2>&1 &&
-     [ -n "$(getprop ro.product.device 2>/dev/null || true)" ]; then
 
-  DEVICE="$(getprop ro.product.device)"
-  MODEL="$(getprop ro.product.model)"
+echo
+echo "[2/7] Looking for Pixel 9 / tokay_beta..."
 
-  PRODUCT="${DEVICE}_beta"
-
-  OTA="$(
-    echo "$OTA_LIST" |
-    grep -iE "/${DEVICE}_beta-.*\.zip$" |
-    head -n1 || true
-  )
-
-# ------------------------------------------------------------
-# Otherwise select random Pixel device
-# ------------------------------------------------------------
+if grep -qi "tokay" "$HTML_FILE"; then
+    echo "OK: tokay found in page"
 else
+    echo "WARNING: tokay was not found in raw HTML."
+    echo "The Google page may be rendering OTA data dynamically."
+fi
 
-  echo "Selecting random Pixel device from Android 17 QPR2 list..."
+# ------------------------------------------------------------
+# Extract OTA ZIP filenames
+# ------------------------------------------------------------
 
-  mapfile -t OTA_ARRAY < <(echo "$OTA_LIST")
+echo
+echo "[3/7] Searching for OTA ZIP filenames..."
 
-  OTA_COUNT="${#OTA_ARRAY[@]}"
+OTA_FILE="$(
+    grep -oE '[A-Za-z0-9._-]+_beta-ota-[A-Za-z0-9._-]+\.zip' "$HTML_FILE" |
+    sort -u |
+    head -n1 || true
+)"
 
-  if [ "$OTA_COUNT" -eq 0 ]; then
-    echo "Error: OTA list is empty!"
+if [ -n "$OTA_FILE" ]; then
+    echo "Found OTA file: $OTA_FILE"
+else
+    echo "No OTA filename found in raw HTML."
+fi
+
+# ------------------------------------------------------------
+# If raw HTML doesn't contain OTA data, show useful diagnostics
+# ------------------------------------------------------------
+
+if [ -z "$OTA_FILE" ]; then
+
+    echo
+    echo "------------------------------------------------------------"
+    echo "OTA links found in HTML:"
+    echo "------------------------------------------------------------"
+
+    grep -oE 'https?://[^" ]+\.zip' "$HTML_FILE" |
+        sort -u |
+        head -50 || true
+
+    echo
+    echo "------------------------------------------------------------"
+    echo "References containing 'tokay':"
+    echo "------------------------------------------------------------"
+
+    grep -i -C2 "tokay" "$HTML_FILE" |
+        head -100 || true
+
+    echo
+    echo "ERROR: Google OTA data is not present in the raw HTML."
+    echo
+    echo "The script must not continue using an empty OTA URL."
     exit 1
-  fi
-
-  RANDOM_INDEX=$((RANDOM % OTA_COUNT))
-
-  OTA="${OTA_ARRAY[$RANDOM_INDEX]}"
-
-  OTA_FILE="$(basename "$OTA")"
-
-  # Example:
-  # tokay_beta-ota-cp41.260814.003.b1-1d691c88.zip
-  PRODUCT="${OTA_FILE%%-ota-*}"
-
-  DEVICE="${PRODUCT%_beta}"
-
 fi
 
 # ------------------------------------------------------------
-# Model name
+# Construct OTA URL
 # ------------------------------------------------------------
-case "$DEVICE" in
-  tokay)
-    MODEL="Pixel 9"
-    ;;
-  caiman)
-    MODEL="Pixel 9 Pro"
-    ;;
-  komodo)
-    MODEL="Pixel 9 Pro XL"
-    ;;
-  comet)
-    MODEL="Pixel 9 Pro Fold"
-    ;;
-  mustang)
-    MODEL="Pixel 10"
-    ;;
-  blazer)
-    MODEL="Pixel 10 Pro"
-    ;;
-  Frankel)
-    MODEL="Pixel 10 Pro XL"
-    ;;
-  *)
-    MODEL="${MODEL:-Pixel Device}"
-    ;;
-esac
+
+OTA_URL="https://dl.google.com/dl/android/aosp/$OTA_FILE"
 
 echo
-echo "Selected Device: $MODEL ($PRODUCT)"
-echo "OTA URL: $OTA"
+echo "[4/7] OTA selected:"
+echo "$OTA_URL"
+
+# ------------------------------------------------------------
+# Download OTA
+# ------------------------------------------------------------
+
 echo
+echo "[5/7] Downloading OTA ZIP..."
 
-# ------------------------------------------------------------
-# Download complete OTA ZIP
-#
-# IMPORTANT:
-# Do NOT use Range: bytes=0-32768 here.
-#
-# META-INF/com/android/metadata is inside the ZIP and cannot
-# reliably be read by simply grepping the first 32 KB.
-# ------------------------------------------------------------
-OTA_ZIP="PIXEL_OTA.zip"
-OTA_METADATA="PIXEL_OTA_METADATA"
+rm -f PIXEL_OTA.zip PIXEL_OTA_METADATA
 
-echo "Downloading OTA ZIP..."
-echo "This may take some time..."
+curl -L --fail --show-error \
+    -o PIXEL_OTA.zip \
+    "$OTA_URL"
 
-rm -f "$OTA_ZIP" "$OTA_METADATA"
-
-wget \
-  --no-check-certificate \
-  --show-progress \
-  -O "$OTA_ZIP" \
-  "$OTA"
-
-if [ ! -s "$OTA_ZIP" ]; then
-  echo "Error: OTA download failed!"
-  exit 1
+if [ ! -s PIXEL_OTA.zip ]; then
+    echo "ERROR: OTA ZIP download failed."
+    exit 1
 fi
 
-echo "OTA downloaded successfully."
+echo "OTA size: $(du -h PIXEL_OTA.zip | cut -f1)"
 
 # ------------------------------------------------------------
-# Verify ZIP
+# Validate ZIP
 # ------------------------------------------------------------
-echo "Checking OTA ZIP..."
 
-if ! unzip -tq "$OTA_ZIP" >/dev/null 2>&1; then
-  echo "Error: Downloaded OTA is not a valid ZIP file!"
-  exit 1
+echo
+echo "[6/7] Validating OTA ZIP..."
+
+if ! unzip -tq PIXEL_OTA.zip >/dev/null; then
+    echo "ERROR: Downloaded file is not a valid ZIP."
+    file PIXEL_OTA.zip
+    exit 1
 fi
 
+echo "OK: OTA ZIP is valid."
+
 # ------------------------------------------------------------
-# Extract Android OTA metadata
+# Extract official OTA metadata
 # ------------------------------------------------------------
-echo "Extracting OTA metadata..."
+
+echo
+echo "Extracting META-INF/com/android/metadata..."
+
+if ! unzip -l PIXEL_OTA.zip |
+    grep -q 'META-INF/com/android/metadata'; then
+
+    echo "ERROR: META-INF/com/android/metadata does not exist."
+    echo
+    echo "Metadata files present:"
+    unzip -l PIXEL_OTA.zip |
+        grep -E 'META-INF|metadata' |
+        head -50
+
+    exit 1
+fi
 
 unzip -p \
-  "$OTA_ZIP" \
-  META-INF/com/android/metadata \
-  > "$OTA_METADATA"
+    PIXEL_OTA.zip \
+    META-INF/com/android/metadata \
+    > PIXEL_OTA_METADATA
 
-if [ ! -s "$OTA_METADATA" ]; then
-  echo "Error: META-INF/com/android/metadata not found!"
-  exit 1
+if [ ! -s PIXEL_OTA_METADATA ]; then
+    echo "ERROR: Metadata extraction produced an empty file."
+    exit 1
 fi
 
 echo
-echo "OTA metadata:"
-echo "------------------------------------------------------------"
-cat "$OTA_METADATA"
-echo "------------------------------------------------------------"
+echo "============================================================"
+echo " OTA METADATA"
+echo "============================================================"
+
+cat PIXEL_OTA_METADATA
+
 echo
+echo "============================================================"
 
 # ------------------------------------------------------------
-# Extract fingerprint
+# Read standard OTA metadata
 # ------------------------------------------------------------
-FINGERPRINT="$(
-  grep -m1 '^post-build=' "$OTA_METADATA" |
-  cut -d= -f2- |
-  tr -d '\r'
+
+POST_BUILD="$(
+    grep -m1 '^post-build=' PIXEL_OTA_METADATA |
+    cut -d= -f2- |
+    tr -d '\r'
 )"
 
-# ------------------------------------------------------------
-# Extract security patch
-# ------------------------------------------------------------
+POST_SDK="$(
+    grep -m1 '^post-sdk-level=' PIXEL_OTA_METADATA |
+    cut -d= -f2- |
+    tr -d '\r'
+)"
+
 SECURITY_PATCH="$(
-  grep -m1 '^security-patch-level=' "$OTA_METADATA" |
-  cut -d= -f2- |
-  tr -d '\r'
+    grep -m1 '^security-patch-level=' PIXEL_OTA_METADATA |
+    cut -d= -f2- |
+    tr -d '\r'
 )"
 
+echo
+echo "post-build:          ${POST_BUILD:-NOT FOUND}"
+echo "post-sdk-level:      ${POST_SDK:-NOT FOUND}"
+echo "security-patch:      ${SECURITY_PATCH:-NOT FOUND}"
+
 # ------------------------------------------------------------
-# Validate metadata
+# Validate
 # ------------------------------------------------------------
-if [ -z "$FINGERPRINT" ]; then
-  echo "Error: Failed to extract post-build fingerprint!"
-  exit 1
+
+if [ -z "$POST_BUILD" ]; then
+    echo
+    echo "ERROR: post-build was not found."
+    exit 1
 fi
 
 if [ -z "$SECURITY_PATCH" ]; then
-  echo "Error: Failed to extract security patch level!"
-  exit 1
+    echo
+    echo "ERROR: security-patch-level was not found."
+    exit 1
 fi
 
-echo "Extracted Fingerprint: $FINGERPRINT"
-echo "Extracted Security Patch: $SECURITY_PATCH"
+echo
+echo "============================================================"
+echo " SUCCESS"
+echo "============================================================"
+echo "OTA:             $OTA_FILE"
+echo "Build metadata:  $POST_BUILD"
+echo "SDK level:       ${POST_SDK:-unknown}"
+echo "Security patch:  $SECURITY_PATCH"
+echo "============================================================"
 
-# ------------------------------------------------------------
-# Generate pif.json
-# ------------------------------------------------------------
-cat > pif.json <<EOF
-{
-  "MANUFACTURER": "Google",
-  "MODEL": "$MODEL",
-  "FINGERPRINT": "$FINGERPRINT",
-  "PRODUCT": "$PRODUCT",
-  "DEVICE": "$DEVICE",
-  "SECURITY_PATCH": "$SECURITY_PATCH",
-  "DEVICE_INITIAL_SDK_INT": "32"
-}
-EOF
+# Cleanup
+rm -f PIXEL_OTA.zip PIXEL_OTA_METADATA PIXEL_OTA_HTML
 
 echo
-echo "Generated pif.json:"
-echo "------------------------------------------------------------"
-cat pif.json
-echo "------------------------------------------------------------"
-
-# ------------------------------------------------------------
-# Cleanup large OTA file
-# ------------------------------------------------------------
-rm -f "$OTA_ZIP" "$OTA_METADATA"
-
-echo
-echo "Done."
+echo "Completed successfully."
 
 # Remove temporary HTML files if they exist
 find . -maxdepth 1 -name "*_HTML" -exec rm {} \;
