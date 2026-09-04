@@ -1,9 +1,9 @@
 {
   "MANUFACTURER": "Google",
-  "MODEL": "Pixel 10 Pro XL",
-  "FINGERPRINT": "google/mustang_beta/mustang:17/CP41.260814.003.B1/16166531:user/release-keys",
-  "PRODUCT": "mustang_beta",
-  "DEVICE": "mustang",
+  "MODEL": "Pixel 9 Pro",
+  "FINGERPRINT": "google/caiman_beta/caiman:17/CP41.260814.003.B1/16166531:user/release-keys",
+  "PRODUCT": "caiman_beta",
+  "DEVICE": "caiman",
   "SECURITY_PATCH": "2026-08-05",
   "DEVICE_INITIAL_SDK_INT": "32"
 }
