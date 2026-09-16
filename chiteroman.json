@@ -1,9 +1,9 @@
 {
   "MANUFACTURER": "Google",
-  "MODEL": "Pixel 10 Pro XL",
-  "FINGERPRINT": "google/mustang_beta/mustang:17/CP41.260828.004.A8/16319058:user/release-keys",
-  "PRODUCT": "mustang_beta",
-  "DEVICE": "mustang",
+  "MODEL": "Pixel 9a",
+  "FINGERPRINT": "google/tegu_beta/tegu:17/CP41.260828.004.A8/16319058:user/release-keys",
+  "PRODUCT": "tegu_beta",
+  "DEVICE": "tegu",
   "SECURITY_PATCH": "2026-08-05",
   "DEVICE_INITIAL_SDK_INT": "32"
 }
