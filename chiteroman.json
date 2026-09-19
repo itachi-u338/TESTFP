@@ -1,9 +1,9 @@
 {
   "MANUFACTURER": "Google",
-  "MODEL": "Pixel 9",
-  "FINGERPRINT": "google/tokay_beta/tokay:17/CP41.260828.004.A8/16319058:user/release-keys",
-  "PRODUCT": "tokay_beta",
-  "DEVICE": "tokay",
-  "SECURITY_PATCH": "2026-08-05",
+  "MODEL": "Pixel Fold",
+  "FINGERPRINT": "google/felix_beta/felix:17/CP41.260828.005.A6/16319837:user/release-keys",
+  "PRODUCT": "felix_beta",
+  "DEVICE": "felix",
+  "SECURITY_PATCH": "2026-07-05",
   "DEVICE_INITIAL_SDK_INT": "32"
 }
