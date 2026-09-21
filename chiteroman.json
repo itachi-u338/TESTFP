@@ -1,9 +1,9 @@
 {
   "MANUFACTURER": "Google",
-  "MODEL": "Pixel 10",
-  "FINGERPRINT": "google/frankel_beta/frankel:17/CP41.260828.004.A8/16319058:user/release-keys",
-  "PRODUCT": "frankel_beta",
-  "DEVICE": "frankel",
+  "MODEL": "Pixel 8",
+  "FINGERPRINT": "google/shiba_beta/shiba:17/CP41.260828.004.A8/16319058:user/release-keys",
+  "PRODUCT": "shiba_beta",
+  "DEVICE": "shiba",
   "SECURITY_PATCH": "2026-08-05",
   "DEVICE_INITIAL_SDK_INT": "32"
 }
