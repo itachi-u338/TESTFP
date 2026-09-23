@@ -1,9 +1,9 @@
 {
   "MANUFACTURER": "Google",
-  "MODEL": "Pixel 11",
-  "FINGERPRINT": "google/cubs_beta/cubs:17/CP41.260828.004.A8/16319058:user/release-keys",
-  "PRODUCT": "cubs_beta",
-  "DEVICE": "cubs",
+  "MODEL": "Pixel 11 Pro Fold",
+  "FINGERPRINT": "google/yogi_beta/yogi:17/CP41.260828.004.A8/16319058:user/release-keys",
+  "PRODUCT": "yogi_beta",
+  "DEVICE": "yogi",
   "SECURITY_PATCH": "2026-08-05",
   "DEVICE_INITIAL_SDK_INT": "32"
 }
