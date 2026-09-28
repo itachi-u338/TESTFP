@@ -1,9 +1,9 @@
 {
   "MANUFACTURER": "Google",
-  "MODEL": "Pixel Fold",
-  "FINGERPRINT": "google/felix_beta/felix:17/CP41.260831.007/16416850:user/release-keys",
-  "PRODUCT": "felix_beta",
-  "DEVICE": "felix",
+  "MODEL": "Pixel 10 Pro Fold",
+  "FINGERPRINT": "google/rango_beta/rango:17/CP41.260831.007/16416850:user/release-keys",
+  "PRODUCT": "rango_beta",
+  "DEVICE": "rango",
   "SECURITY_PATCH": "2026-09-05",
   "DEVICE_INITIAL_SDK_INT": "32"
 }
