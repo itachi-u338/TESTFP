@@ -1,9 +1,9 @@
 {
   "MANUFACTURER": "Google",
-  "MODEL": "Pixel 11 Pro XL",
-  "FINGERPRINT": "google/kodiak_beta/kodiak:17/CP41.260831.011/16448103:user/release-keys",
-  "PRODUCT": "kodiak_beta",
-  "DEVICE": "kodiak",
-  "SECURITY_PATCH": "2026-09-01",
+  "MODEL": "Pixel 10 Pro XL",
+  "FINGERPRINT": "google/mustang_beta/mustang:17/CP41.260831.007.A3/16450490:user/release-keys",
+  "PRODUCT": "mustang_beta",
+  "DEVICE": "mustang",
+  "SECURITY_PATCH": "2026-09-05",
   "DEVICE_INITIAL_SDK_INT": "32"
 }
