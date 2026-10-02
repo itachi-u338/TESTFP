@@ -1,9 +1,9 @@
 {
   "MANUFACTURER": "Google",
-  "MODEL": "Pixel 7",
-  "FINGERPRINT": "google/panther_beta/panther:17/CP41.260831.007.A3/16450490:user/release-keys",
-  "PRODUCT": "panther_beta",
-  "DEVICE": "panther",
+  "MODEL": "Pixel 9 Pro Fold",
+  "FINGERPRINT": "google/comet_beta/comet:17/CP41.260831.007.A3/16450490:user/release-keys",
+  "PRODUCT": "comet_beta",
+  "DEVICE": "comet",
   "SECURITY_PATCH": "2026-09-05",
   "DEVICE_INITIAL_SDK_INT": "32"
 }
