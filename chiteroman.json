@@ -1,9 +1,9 @@
 {
   "MANUFACTURER": "Google",
-  "MODEL": "Pixel 9",
-  "FINGERPRINT": "google/tokay_beta/tokay:17/CP41.260831.016/16521119:user/release-keys",
-  "PRODUCT": "tokay_beta",
-  "DEVICE": "tokay",
+  "MODEL": "Pixel 6a",
+  "FINGERPRINT": "google/bluejay_beta/bluejay:17/CP41.260831.016/16521119:user/release-keys",
+  "PRODUCT": "bluejay_beta",
+  "DEVICE": "bluejay",
   "SECURITY_PATCH": "2026-10-05",
   "DEVICE_INITIAL_SDK_INT": "32"
 }
